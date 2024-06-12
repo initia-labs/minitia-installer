@@ -11,6 +11,7 @@ VM_CHOICES = ["minimove", "miniwasm"]
 MINIWASM_VERSION = "0.2.14"
 MINIMOVE_VERSION = "0.2.12"
 
+
 # Choices
 class NetworkChoice(str, Enum):
     TESTNET = "1"

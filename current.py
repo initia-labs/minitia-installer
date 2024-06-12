@@ -413,7 +413,9 @@ def launch_minitia(network, sequencer_mnemonic):
 
 def create_minitia_service():
     username = subprocess.check_output("whoami").decode().strip()
-    home_directory = subprocess.check_output(["getent", "passwd", username]).decode().split(':')[5]
+    home_directory = (
+        subprocess.check_output(["getent", "passwd", username]).decode().split(":")[5]
+    )
 
     service_content = f"""
 [Unit]
@@ -439,10 +441,16 @@ WantedBy=multi-user.target
     service_file_path = "/etc/systemd/system/minitiad.service"
 
     try:
-        subprocess.run(["sudo", "tee", service_file_path], input=service_content.encode(), check=True)
+        subprocess.run(
+            ["sudo", "tee", service_file_path],
+            input=service_content.encode(),
+            check=True,
+        )
         print("Systemd service file created successfully.")
     except PermissionError:
-        print("Permission denied: You need to run this script as root to create systemd service files.")
+        print(
+            "Permission denied: You need to run this script as root to create systemd service files."
+        )
     except Exception as e:
         print(f"An error occurred: {e}")
     # Enabling and starting the systemd service for minitiad
@@ -502,10 +510,19 @@ def collect_minitia_config():
         sys.exit(1)
     return l2_chain_id
 
+
 def install_opinit():
     print("Cloning OPinit-bots repository...")
     try:
-        subprocess.run(["git", "clone", "https://github.com/initia-labs/OPinit-bots.git", "--quiet"], check=True)
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "https://github.com/initia-labs/OPinit-bots.git",
+                "--quiet",
+            ],
+            check=True,
+        )
         print("Repository cloned successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Failed to clone repository: {e}")
@@ -522,14 +539,18 @@ def install_opinit():
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
 
+
 def setup_bridge_executor():
     pass
+
 
 def setup_output_submitter():
     pass
 
+
 def setup_batch_submitter():
     pass
+
 
 def main():
     welcome_message()
@@ -543,5 +564,6 @@ def main():
     create_minitia_service()
     install_opinit()
     setup_bridge_executor()
+
 
 main()

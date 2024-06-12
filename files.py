@@ -1,5 +1,5 @@
 def template_env():
-  template = """
+    template = """
 TYPEORM_CONNECTION=postgres               # database connection (currently only support `postgres`)
 TYPEORM_HOST=localhost                    # database host
 TYPEORM_USERNAME=username                 # database username
@@ -18,22 +18,24 @@ L2_LCD_URI=http://127.0.0.1:1317
 L2_RPC_URI=http://127.0.0.1:26657
 BRIDGE_ID=1
 """
-  return template
+    return template
+
 
 def create_executor_env():
-  mneonic = "tent apple ... "
-  template = template_env()
-  template += f"""
+    mneonic = "tent apple ... "
+    template = template_env()
+    template += f"""
 EXECUTOR_PORT=5000
 ENABLE_ORACLE=true
 EXECUTOR_MNEMONIC='{mneonic}'
 """
-  with open('.env.executor', 'w') as f:
-    f.write(template)
+    with open(".env.executor", "w") as f:
+        f.write(template)
+
 
 def create_opinit_bots_env():
-  create_executor_env()
-  
-if __name__ == "__main__":
-  create_opinit_bots_env()
+    create_executor_env()
 
+
+if __name__ == "__main__":
+    create_opinit_bots_env()

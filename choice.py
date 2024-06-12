@@ -1,6 +1,7 @@
 from options import VMChoice, NetworkChoice, bcolors, TESTNET
 import sys
 
+
 def select_vm(vm: str):
     # Check if setup is specified in args
     if vm != "":
@@ -106,6 +107,7 @@ Please choose the desired network:
     if choice == NetworkChoice.TESTNET:
         network = TESTNET
     return network
+
 
 def get_mnemonic(mnemonic):
     if mnemonic != "":
