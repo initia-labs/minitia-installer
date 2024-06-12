@@ -160,8 +160,8 @@ def init():
         + text.WELCOME_MESSAGE
         + bcolors.ENDC
     )
-    update_apt()
-    install_golang()
+    # update_apt()
+    # install_golang()
     install_postgresql()
     install_docker()
 
