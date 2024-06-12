@@ -22,11 +22,6 @@ import json
 
 app = typer.Typer()
 
-def update_apt():
-  with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
-    task = progress.add_task("[cyan]Updating APT...", total=100)
-    subprocess.run(["sudo", "apt", "update"], check=True, stdout=subprocess.DEVNULL)
-
 def setup_progress(task_description: str, total: int):
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
         task = progress.add_task(f"[cyan]{task_description}...", total=total)
@@ -80,16 +75,16 @@ def install_docker():
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
         task = progress.add_task("[cyan]Installing Docker...", total=100)
         try:
-            subprocess.run(["sudo", "apt-get", "update"], check=True)
-            subprocess.run(["sudo", "apt-get", "install", "ca-certificates", "curl", "-y"], check=True)
-            subprocess.run(["sudo", "install", "-m", "0755", "-d", "/etc/apt/keyrings"], check=True)
-            subprocess.run(["sudo", "curl", "-fsSL", "https://download.docker.com/linux/ubuntu/gpg", "-o", "/etc/apt/keyrings/docker.asc"], check=True)
-            subprocess.run(["sudo", "chmod", "a+r", "/etc/apt/keyrings/docker.asc"], check=True)
+            subprocess.run(["sudo", "apt-get", "update"], check=True, stdout=subprocess.DEVNULL )
+            subprocess.run(["sudo", "apt-get", "install", "ca-certificates", "curl", "-y"], check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["sudo", "install", "-m", "0755", "-d", "/etc/apt/keyrings"], check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["sudo", "curl", "-fsSL", "https://download.docker.com/linux/ubuntu/gpg", "-o", "/etc/apt/keyrings/docker.asc"], check=True, stdout=subprocess.DEVNULL)    
+            subprocess.run(["sudo", "chmod", "a+r", "/etc/apt/keyrings/docker.asc"], check=True, stdout=subprocess.DEVNULL)
             subprocess.run(
               'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list',
               shell=True, check=True, stdout=subprocess.DEVNULL)
-            subprocess.run(["sudo", "apt-get", "update"], check=True)
-            subprocess.run(["sudo", "apt-get", "install", "docker-ce", "docker-ce-cli", "containerd.io", "docker-buildx-plugin", "docker-compose-plugin", "-y"], check=True)
+            subprocess.run(["sudo", "apt-get", "update"], check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["sudo", "apt-get", "install", "docker-ce", "docker-ce-cli", "containerd.io", "docker-buildx-plugin", "docker-compose-plugin", "-y"], check=True, stdout=subprocess.DEVNULL)
             progress.update(task, advance=100)
         except subprocess.CalledProcessError as e:
             print(bcolors.RED + f"Failed to install Docker: {e}" + bcolors.ENDC)
@@ -157,8 +152,7 @@ def init():
         + text.WELCOME_MESSAGE
         + bcolors.ENDC
     )
-    # update_apt()
-    # install_golang()
+    install_golang()
     install_postgresql()
     install_docker()
 
