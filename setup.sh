@@ -8,3 +8,4 @@ sudo apt upgrade
 sudo apt install python3-pip -y
 
 chmod +x scripts/*.sh
+pip install typer
