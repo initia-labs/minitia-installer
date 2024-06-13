@@ -1,47 +1,49 @@
-import typer
-from options import bcolors, MINIMOVE, MINIWASM, VM_CHOICES, VMChoice
-import text
-import subprocess
-import os
-import sys
-from rich.progress import BarColumn, Progress, TextColumn, SpinnerColumn
-import time
-from choice import select_vm, select_network, get_mnemonic
-from typing_extensions import Annotated
 import json
+import logging
+import os
+import subprocess
+import sys
+import text
+import typer
 import constants
+
+from choice import get_mnemonic, select_network, select_vm
+from setup import install_docker, install_golang, install_postgresql
+from options import MINIMOVE, MINIWASM, VMChoice, bcolors
+from progress import setup_progress
+from typing_extensions import Annotated
 
 app = typer.Typer()
 
-
-def setup_progress(task_description: str, total: int):
-    with Progress(
-        SpinnerColumn(), TextColumn("[progress.description]{task.description}")
-    ) as progress:
-        task = progress.add_task(f"[cyan]{task_description}...", total=total)
-        return progress, task
-
-
-def install_golang():
-    progress, task = setup_progress("Installing Golang 1.22", 100)
-    try:
-        subprocess.run(
-            ["bash", "scripts/install_golang.sh"],
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-        progress.update(task, advance=100)
-        print(bcolors.OKGREEN + "Golang 1.22 installed successfully." + bcolors.ENDC)
-    except subprocess.CalledProcessError as e:
-        print(bcolors.RED + f"Failed to install Golang 1.22: {e}" + bcolors.ENDC)
-        sys.exit(1)
+logging.basicConfig(level=logging.INFO)
 
 
 def clone_minitia_repository(vm):
+    """
+    Clones the minitia repository for the specified VM type.
+
+    Args:
+        vm (VMChoice): The minitia VM type for which the repository should be cloned.
+
+    Raises:
+        ValueError: If an invalid VM choice is provided.
+        subprocess.CalledProcessError: If the cloning process fails.
+    """
     choice = get_repository_choice(vm)
     repository_url = f"https://github.com/initia-labs/{choice.name}.git"
-    print(bcolors.OKGREEN + f"Cloning minitia repository" + bcolors.ENDC)
-    clone_repository(repository_url)
+    logging.info(f"Cloning minitia repository from {repository_url}")
+
+    try:
+        subprocess.run(
+            ["git", "clone", repository_url],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        logging.info("Repository cloned successfully.")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Failed to clone repository: {e}")
+        raise
 
 
 def get_repository_choice(vm):
@@ -53,67 +55,7 @@ def get_repository_choice(vm):
         raise ValueError("Invalid VM choice")
 
 
-def clone_repository(repository_url):
-    try:
-        with setup_progress(f"Cloning {repository_url}...", 100) as (
-            progress,
-            clone_task,
-        ):
-            subprocess.run(
-                ["git", "clone", repository_url],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            progress.update(clone_task, completed=100)
-        print(bcolors.OKGREEN + "Repository cloned successfully." + bcolors.ENDC)
-    except subprocess.CalledProcessError as e:
-        print(bcolors.RED + f"Failed to clone repository: {e}" + bcolors.ENDC)
-        sys.exit(1)
-
-
-def install_postgresql():
-    with Progress(
-        SpinnerColumn(), TextColumn("[progress.description]{task.description}")
-    ) as progress:
-        task = progress.add_task("[cyan]Installing PostgreSQL...", total=100)
-        subprocess.run(
-            ["bash", "scripts/install_postgresql.sh"],
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-        progress.update(task, advance=100)
-        print(bcolors.OKGREEN + "PostgreSQL installed successfully." + bcolors.ENDC)
-        print(bcolors.OKGREEN + "Starting PostgreSQL Service..." + bcolors.ENDC)
-        subprocess.run(
-            ["bash", "scripts/start_postgresql.sh"],
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-        print(bcolors.OKGREEN + "PostgreSQL Service Started." + bcolors.ENDC)
-
-
-def install_docker():
-    with Progress(
-        SpinnerColumn(), TextColumn("[progress.description]{task.description}")
-    ) as progress:
-        task = progress.add_task("[cyan]Installing Docker...", total=100)
-        try:
-            subprocess.run(
-                ["bash", "scripts/install_docker.sh"],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                shell=True,
-            )
-            progress.update(task, advance=100)
-        except subprocess.CalledProcessError as e:
-            print(bcolors.RED + f"Failed to install Docker: {e}" + bcolors.ENDC)
-            sys.exit(1)
-        print(bcolors.OKGREEN + "Docker installed successfully." + bcolors.ENDC)
-
-
 def install_binary(vm):
-    print(vm)
     choice = MINIMOVE
     if vm == VMChoice.MINIMOVE:
         choice = MINIMOVE
@@ -122,22 +64,15 @@ def install_binary(vm):
 
     print(bcolors.OKGREEN + f"Installing minitia binary" + bcolors.ENDC)
     os.chdir(f"{os.getcwd()}/{choice.name}")
+    progress, task = setup_progress(f"Installing {choice.name} binary...", 100)
     try:
-        with Progress(
-            TextColumn("[bold blue]{task.description}", justify="right"),
-            BarColumn(bar_width=None),
-            "[progress.percentage]",
-        ) as progress:
-            install_task = progress.add_task(
-                f"Installing {choice.name} binary...", total=100
-            )
-            subprocess.run(
-                ["make", "install"],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            progress.update(install_task, completed=100)
+        subprocess.run(
+            ["make", "install"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        progress.update(task, advance=100)
         print(bcolors.OKGREEN + "Installation completed successfully." + bcolors.ENDC)
     except subprocess.CalledProcessError as e:
         print(bcolors.RED + f"Failed to run 'make install': {e}" + bcolors.ENDC)
@@ -205,8 +140,67 @@ def build_launch_command(sequencer_mnemonic, chain_id, config_path):
     ]
 
 
+def collect_minitia_config():
+    """
+    Loads the L2 chain ID from the Minitia configuration file.
+
+    Returns:
+        str: The L2 chain ID loaded from the configuration file.
+
+    Raises:
+        FileNotFoundError: If the configuration file does not exist.
+        KeyError: If the 'chain_id' key is missing in the L2 configuration.
+        json.JSONDecodeError: If the configuration file is not valid JSON.
+    """
+    config_file_path = os.path.join(
+        os.path.expanduser("~"), ".minitia", "artifacts", "config.json"
+    )
+    try:
+        with open(config_file_path, "r") as file:
+            config_data = json.load(file)
+            l2_chain_id = config_data["l2_config"]["chain_id"]
+            logging.info(f"Loaded L2 chain ID: {l2_chain_id}")
+            return l2_chain_id
+    except FileNotFoundError:
+        logging.error("Error: config.json file not found.")
+        raise
+    except KeyError:
+        logging.error("Error: 'chain_id' not found in L2 configuration.")
+        raise
+    except json.JSONDecodeError:
+        logging.error("Error: config.json is not a valid JSON file.")
+        raise
+
+
+def run_opinit_bot(bot: str, version="v0.1.16"):
+    """
+    Starts a Docker container for a specified bot using a given version.
+
+    Args:
+        bot (str): The name of the bot to run.
+        version (str): The Docker image version to use.
+
+    Raises:
+        subprocess.CalledProcessError: If the Docker container fails to start.
+    """
+    docker_image = f"ghcr.io/initia-labs/opinit-bots:{version}"
+    docker_command = (
+        f"docker run -d -p 5432:5432 --network host "
+        f"-v $(pwd)/envs/.env.{bot}:/usr/src/app/.env.{bot} "
+        f"{docker_image} prod:{bot} --env-file .env.{bot}"
+    )
+    try:
+        with setup_progress(f"Starting {bot} bot...") as progress:
+            subprocess.run(docker_command, check=True, shell=True)
+            progress.update(completed=100)
+        logging.info(f"Docker container for {bot} started successfully.")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Failed to start Docker container for {bot}: {e}")
+        raise
+
+
 @app.command()
-def init():
+def setup():
     print(bcolors.OKGREEN + text.WELCOME_MESSAGE + bcolors.ENDC)
     install_golang()
     install_postgresql()
@@ -244,11 +238,21 @@ def start(
     ] = constants.DEFAULT_L2_GAS_DENOM,
 ):
     vm = select_vm(vm)
+
     network = select_network(l1)
     mnemonic = get_mnemonic(mnemonic)
     clone_minitia_repository(vm)
     install_binary(vm)
     launch_minitia(network, chain_id, denom, mnemonic)
+    l2_chain_id = collect_minitia_config()
+
+
+@app.command()
+def opinit():
+    run_opinit_bot("executor")
+    run_opinit_bot("batch")
+    run_opinit_bot("challenger")
+    run_opinit_bot("output")
 
 
 if __name__ == "__main__":
